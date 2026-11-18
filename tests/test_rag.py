@@ -2,7 +2,12 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from nephrology_agent.rag import answer_question, chunk_text, index_pdf
+from nephrology_agent.rag import (
+    answer_question,
+    chunk_text,
+    create_ephemeral_collection,
+    index_pdf,
+)
 
 
 class ChunkTextTests(unittest.TestCase):
@@ -21,6 +26,21 @@ class ChunkTextTests(unittest.TestCase):
     def test_invalid_overlap_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             chunk_text("text", size=10, overlap=10)
+
+
+class EphemeralCollectionTests(unittest.TestCase):
+    def test_collections_are_isolated_between_sessions(self) -> None:
+        _, first_collection = create_ephemeral_collection()
+        _, second_collection = create_ephemeral_collection()
+        first_collection.add(
+            ids=["one"],
+            embeddings=[[0.0] * 768],
+            documents=["session-specific text"],
+            metadatas=[{"filename": "guide.pdf", "page": 1, "sha256": "one"}],
+        )
+
+        self.assertEqual(first_collection.count(), 1)
+        self.assertEqual(second_collection.count(), 0)
 
 
 class AnswerQuestionTests(unittest.TestCase):

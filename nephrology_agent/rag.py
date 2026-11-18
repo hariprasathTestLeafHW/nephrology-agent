@@ -4,6 +4,7 @@ import hashlib
 import io
 from pathlib import Path
 from urllib.parse import urlparse
+from uuid import uuid4
 
 import chromadb
 from chromadb.config import Settings
@@ -59,6 +60,18 @@ def create_collection(persist_directory: Path) -> Collection:
         name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
+
+
+def create_ephemeral_collection() -> tuple[chromadb.ClientAPI, Collection]:
+    client = chromadb.EphemeralClient(
+        settings=Settings(anonymized_telemetry=False),
+    )
+    # Chroma shares ephemeral clients in-process, so each session needs its own collection.
+    collection = client.get_or_create_collection(
+        name=f"{COLLECTION_NAME}_{uuid4().hex}",
+        metadata={"hnsw:space": "cosine"},
+    )
+    return client, collection
 
 
 def _embed(

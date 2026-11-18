@@ -10,12 +10,11 @@ from pypdf.errors import PdfReadError
 from nephrology_agent.rag import (
     MAX_PDF_BYTES,
     answer_question,
-    create_collection,
+    create_ephemeral_collection,
     index_pdf,
 )
 
 APP_DIRECTORY = Path(__file__).resolve().parent
-DATA_DIRECTORY = APP_DIRECTORY / "data"
 
 load_dotenv(APP_DIRECTORY / ".env")
 
@@ -39,7 +38,6 @@ st.markdown(
     "[NIDDK kidney health information](https://www.niddk.nih.gov/health-information/kidney-disease)"
 )
 
-configured_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 embedding_model = os.environ.get(
     "GEMINI_EMBEDDING_MODEL",
@@ -50,11 +48,13 @@ with st.sidebar:
     st.header("Knowledge base")
     api_key = st.text_input(
         "Gemini API key",
-        value=configured_api_key,
         type="password",
-        help="Entered locally for this session. Do not paste API keys into chat or share them.",
+        help="Used for this session's Gemini requests and not saved by the app.",
     ).strip()
-    st.write("Add PDFs you are authorized to use. Indexed text and vectors are stored locally.")
+    st.write(
+        "Add PDFs you are authorized to use. Indexed text and vectors are private to "
+        "this browser session."
+    )
     st.caption("Check each document's license and update date before indexing.")
     uploaded_files = st.file_uploader(
         "Choose PDF documents",
@@ -72,9 +72,13 @@ with st.sidebar:
     )
 
     if not api_key:
-        st.info("Set GEMINI_API_KEY in the app's .env file to enable indexing and chat.")
+        st.info("Enter your Gemini API key to enable indexing and chat.")
 
-collection = create_collection(DATA_DIRECTORY / "chroma")
+if "chroma_client" not in st.session_state:
+    st.session_state["chroma_client"], st.session_state["collection"] = (
+        create_ephemeral_collection()
+    )
+collection = st.session_state["collection"]
 document_count = collection.count()
 chunk_metric = st.sidebar.empty()
 chunk_metric.metric("Indexed text chunks", document_count)
