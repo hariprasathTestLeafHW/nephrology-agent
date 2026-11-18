@@ -1,11 +1,15 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 from nephrology_agent.rag import (
     answer_question,
     chunk_text,
-    create_ephemeral_collection,
+    create_shared_ephemeral_collection,
+    index_preloaded_pdfs,
     index_pdf,
 )
 
@@ -28,19 +32,54 @@ class ChunkTextTests(unittest.TestCase):
             chunk_text("text", size=10, overlap=10)
 
 
-class EphemeralCollectionTests(unittest.TestCase):
-    def test_collections_are_isolated_between_sessions(self) -> None:
-        _, first_collection = create_ephemeral_collection()
-        _, second_collection = create_ephemeral_collection()
+class SharedCollectionTests(unittest.TestCase):
+    def test_shared_collection_data_is_visible_to_both_clients(self) -> None:
+        _, first_collection = create_shared_ephemeral_collection()
+        _, second_collection = create_shared_ephemeral_collection()
+        document_id = uuid4().hex
         first_collection.add(
-            ids=["one"],
+            ids=[document_id],
             embeddings=[[0.0] * 768],
             documents=["session-specific text"],
             metadatas=[{"filename": "guide.pdf", "page": 1, "sha256": "one"}],
         )
 
-        self.assertEqual(first_collection.count(), 1)
-        self.assertEqual(second_collection.count(), 0)
+        result = second_collection.get(ids=[document_id])
+        self.assertEqual(result["documents"], ["session-specific text"])
+
+
+class PreloadedPdfTests(unittest.TestCase):
+    @patch("nephrology_agent.rag.index_pdf")
+    def test_indexes_all_preloaded_pdfs_in_filename_order(self, mock_index_pdf: Mock) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            pdf_directory = Path(temporary_directory)
+            (pdf_directory / "b.pdf").write_bytes(b"%PDF-b")
+            (pdf_directory / "a.pdf").write_bytes(b"%PDF-a")
+
+            collection = Mock()
+            collection.count.return_value = 4
+            indexed_count = index_preloaded_pdfs(
+                client=Mock(),
+                collection=collection,
+                pdf_directory=pdf_directory,
+                embedding_model="test-embedding-model",
+            )
+
+        self.assertEqual(indexed_count, 4)
+        self.assertEqual(
+            [entry.kwargs["filename"] for entry in mock_index_pdf.call_args_list],
+            ["a.pdf", "b.pdf"],
+        )
+
+    def test_missing_preloaded_pdfs_are_reported(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            with self.assertRaises(FileNotFoundError):
+                index_preloaded_pdfs(
+                    client=Mock(),
+                    collection=Mock(),
+                    pdf_directory=Path(temporary_directory),
+                    embedding_model="test-embedding-model",
+                )
 
 
 class AnswerQuestionTests(unittest.TestCase):
@@ -83,6 +122,7 @@ class AnswerQuestionTests(unittest.TestCase):
         self.assertIn("clearly labeling them as general information", prompt)
         self.assertIn("confirm treatment decisions with their physician", prompt)
         self.assertIn("Never provide medication doses", prompt)
+        self.assertIn("lead with advice to seek urgent or emergency care", prompt)
 
 
 class IndexPdfTests(unittest.TestCase):

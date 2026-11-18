@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 import io
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
-from uuid import uuid4
 
 import chromadb
+from chromadb.api import ClientAPI
 from chromadb.config import Settings
 from chromadb.api.models.Collection import Collection
 from google import genai
@@ -62,13 +63,12 @@ def create_collection(persist_directory: Path) -> Collection:
     )
 
 
-def create_ephemeral_collection() -> tuple[chromadb.ClientAPI, Collection]:
+def create_shared_ephemeral_collection() -> tuple[ClientAPI, Collection]:
     client = chromadb.EphemeralClient(
         settings=Settings(anonymized_telemetry=False),
     )
-    # Chroma shares ephemeral clients in-process, so each session needs its own collection.
     collection = client.get_or_create_collection(
-        name=f"{COLLECTION_NAME}_{uuid4().hex}",
+        name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
     return client, collection
@@ -172,6 +172,31 @@ def index_pdf(
     return len(chunks), False
 
 
+def index_preloaded_pdfs(
+    client: genai.Client,
+    collection: Collection,
+    pdf_directory: Path,
+    embedding_model: str,
+) -> int:
+    pdf_paths = sorted(pdf_directory.glob("*.pdf"))
+    if not pdf_paths:
+        raise FileNotFoundError(f"No preloaded PDF documents found in {pdf_directory}.")
+
+    for pdf_path in pdf_paths:
+        index_pdf(
+            client=client,
+            collection=collection,
+            filename=pdf_path.name,
+            content=pdf_path.read_bytes(),
+            embedding_model=embedding_model,
+        )
+
+    document_count = collection.count()
+    if document_count == 0:
+        raise RuntimeError("The preloaded PDFs did not produce any searchable text.")
+    return document_count
+
+
 def answer_question(
     client: genai.Client,
     collection: Collection,
@@ -226,6 +251,7 @@ Safety and accuracy rules:
 - Do not diagnose a person, interpret an individual patient's labs, or provide a personalized treatment plan or medication instructions.
 - If the question asks for individualized care, explain that only a licensed clinician who knows the patient's history can determine their plan. Still provide a brief general overview of relevant evaluation or treatment approaches when the excerpts support it, clearly labeling them as general information rather than a recommendation for the person.
 - Tell the user to confirm treatment decisions with their physician. Never provide medication doses or tell them to start, stop, or change treatment.
+- If the excerpts identify emergency features relevant to the question, lead with advice to seek urgent or emergency care.
 - If the excerpts do not support an answer, say that the indexed sources do not provide enough information. Do not fill gaps with guesses.
 - Separate established source statements from uncertainty. Do not invent guidelines, dates, doses, or citations.
 - Cite factual claims with the provided source numbers, for example [1]. Use only those numbers.
