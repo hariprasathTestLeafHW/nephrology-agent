@@ -1,6 +1,6 @@
 # Nephrology Knowledge Assistant
 
-A standalone Streamlit RAG application for general nephrology education. It extracts text from the curated PDFs in `data/knowledge_base`, embeds chunks with Gemini Embeddings, stores the vectors and source metadata in a shared in-memory ChromaDB collection, retrieves relevant excerpts, and asks Gemini Flash-Lite to answer with numbered citations.
+A standalone Streamlit RAG application for general nephrology education. It extracts text from the curated PDFs in `data/knowledge_base`, embeds chunks with Gemini Embeddings, stores vectors and source metadata in a shared persistent ChromaDB collection, retrieves relevant excerpts, and asks Gemini Flash-Lite to answer with numbered citations.
 
 ## Requirements
 
@@ -29,15 +29,17 @@ Run the app:
 streamlit run app.py --server.address 127.0.0.1
 ```
 
-The app ships with a shared, read-only corpus in `data/knowledge_base`; visitors cannot upload or modify documents. The app embeds these PDFs when its process starts, preserving each file name and page number for citations. Add new, authorized, clinician-reviewed PDFs to that folder and redeploy/restart the app to update the corpus. Startup embedding uses the configured Gemini key and quota; a process restart rebuilds the in-memory vector store. Check each document's license and update date before adding it.
+The app ships with a shared, read-only corpus in `data/knowledge_base`; visitors cannot upload or modify documents. The app stores its Chroma index in the Git-ignored `data/chroma` directory, preserving each file name and page number for citations. It reuses indexed vectors across process restarts when that local directory remains available, and re-embeds only new or changed PDFs. Add new, authorized, clinician-reviewed PDFs to the corpus and redeploy/restart the app. Rebuilding the index uses the configured Gemini key and embedding quota. Streamlit Community Cloud may replace an app's local filesystem when its environment is recreated, so this cache is not a durable backup and could need rebuilding. Check each document's license and update date before adding it.
 
-Text extraction does not include scanned-image OCR. OCR scanned PDFs before adding them. Each file is limited to 20 MB. Indexed text and vectors are held in server memory; PDF files are included in the repository.
+Before answer generation, exact repeated overlap is removed only between adjacent chunks from the same PDF page. The app keeps the retrieved sources and citations, does not reduce the number of retrieved results, and does not add a summarization-model call.
+
+Text extraction does not include scanned-image OCR. OCR scanned PDFs before adding them. Each file is limited to 20 MB. The index is stored on the server; PDF files are included in the repository.
 
 ## Privacy and medical safety
 
 This is an educational prototype, not a medical device or clinical decision-support system. It does not diagnose, interpret individual patient results, or recommend treatment changes. A clinician should be consulted for personal medical decisions; urgent symptoms need timely professional care.
 
-The vector store is shared by visitors in the same server process; chat history remains per browser session. Startup embedding sends corpus text to Google's API, and question-answer requests send the question and retrieved excerpts. API keys are used by the app server and are not written to disk by this app. Any visitor can use the configured Gemini quota and may incur costs. Google's free-tier terms state that submitted content may be used to improve its products. Do not include protected health information or enter identifiable patient data. Review Google's current [API terms](https://ai.google.dev/gemini-api/terms) and [pricing/data-use details](https://ai.google.dev/gemini-api/docs/pricing) before use.
+The persistent local vector store is shared by visitors to the app; chat history remains per browser session. When the index needs to be built or updated, corpus text is sent to Google's API. Question-answer requests send the question and retrieved excerpts. API keys are used by the app server and are not written to disk by this app. Any visitor can use the configured Gemini quota and may incur costs. Google's free-tier terms state that submitted content may be used to improve its products. Do not include protected health information or enter identifiable patient data. Review Google's current [API terms](https://ai.google.dev/gemini-api/terms) and [pricing/data-use details](https://ai.google.dev/gemini-api/docs/pricing) before use.
 
 ## Public hosting
 

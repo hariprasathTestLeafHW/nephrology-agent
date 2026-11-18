@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import io
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 import chromadb
 from chromadb.api import ClientAPI
+from chromadb.api.types import Metadata, PyEmbedding
 from chromadb.config import Settings
 from chromadb.api.models.Collection import Collection
 from google import genai
@@ -18,6 +20,7 @@ CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 180
 EMBEDDING_DIMENSIONS = 768
 EMBEDDING_BATCH_SIZE = 64
+INDEX_VERSION = 1
 MAX_PDF_BYTES = 20 * 1024 * 1024
 MAX_QUESTION_LENGTH = 4000
 COLLECTION_NAME = "nephrology_documents"
@@ -74,15 +77,32 @@ def create_shared_ephemeral_collection() -> tuple[ClientAPI, Collection]:
     return client, collection
 
 
+def create_shared_persistent_collection(
+    persist_directory: Path,
+) -> tuple[ClientAPI, Collection]:
+    persist_directory.mkdir(parents=True, exist_ok=True)
+    client = chromadb.PersistentClient(
+        path=str(persist_directory),
+        settings=Settings(anonymized_telemetry=False),
+    )
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
+    return client, collection
+
+
 def _embed(
     client: genai.Client,
     texts: list[str],
     model: str,
     task_type: str,
 ) -> list[list[float]]:
+    contents: list[types.ContentUnion] = []
+    contents.extend(texts)
     response = client.models.embed_content(
         model=model,
-        contents=texts,
+        contents=contents,
         config=types.EmbedContentConfig(
             task_type=task_type,
             output_dimensionality=EMBEDDING_DIMENSIONS,
@@ -116,8 +136,22 @@ def index_pdf(
             raise ValueError("Source URLs must use HTTPS.")
 
     file_hash = hashlib.sha256(content).hexdigest()
-    existing = collection.get(where={"sha256": file_hash}, limit=1)
-    if existing["ids"]:
+    existing = collection.get(
+        where={"filename": filename},
+        include=["metadatas"],
+    )
+    existing_ids = existing["ids"]
+    existing_metadatas = existing.get("metadatas") or []
+    if existing_ids and len(existing_metadatas) == len(existing_ids) and all(
+        metadata
+        and metadata.get("sha256") == file_hash
+        and metadata.get("embedding_model") == embedding_model
+        and metadata.get("embedding_dimensions") == EMBEDDING_DIMENSIONS
+        and metadata.get("chunk_size") == CHUNK_SIZE
+        and metadata.get("chunk_overlap") == CHUNK_OVERLAP
+        and metadata.get("index_version") == INDEX_VERSION
+        for metadata in existing_metadatas
+    ):
         return 0, True
 
     reader = PdfReader(io.BytesIO(content), strict=False)
@@ -134,8 +168,14 @@ def index_pdf(
 
     ids: list[str] = []
     documents: list[str] = []
-    metadatas: list[dict[str, str | int]] = []
-    embeddings: list[list[float]] = []
+    metadatas: list[Metadata] = []
+    embeddings: list[PyEmbedding] = []
+    index_key = hashlib.sha256(
+        (
+            f"{filename}\0{file_hash}\0{embedding_model}\0{EMBEDDING_DIMENSIONS}"
+            f"\0{CHUNK_SIZE}\0{CHUNK_OVERLAP}\0{INDEX_VERSION}"
+        ).encode()
+    ).hexdigest()
     for batch_start in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
         batch = chunks[batch_start : batch_start + EMBEDDING_BATCH_SIZE]
         embeddings.extend(
@@ -147,7 +187,7 @@ def index_pdf(
             )
         )
         ids.extend(
-            f"{file_hash}:{page_number}:{chunk_number}"
+            f"{index_key}:{page_number}:{chunk_number}"
             for page_number, chunk_number, _ in batch
         )
         documents.extend(chunk for _, _, chunk in batch)
@@ -156,10 +196,16 @@ def index_pdf(
                 {
                     "filename": filename,
                     "page": page_number,
+                    "chunk_number": chunk_number,
                     "sha256": file_hash,
                     "source_url": source_url,
+                    "embedding_model": embedding_model,
+                    "embedding_dimensions": EMBEDDING_DIMENSIONS,
+                    "chunk_size": CHUNK_SIZE,
+                    "chunk_overlap": CHUNK_OVERLAP,
+                    "index_version": INDEX_VERSION,
                 }
-                for page_number, _, _ in batch
+                for page_number, chunk_number, _ in batch
             ]
         )
 
@@ -169,6 +215,8 @@ def index_pdf(
         documents=documents,
         metadatas=metadatas,
     )
+    if existing_ids:
+        collection.delete(ids=existing_ids)
     return len(chunks), False
 
 
@@ -191,10 +239,73 @@ def index_preloaded_pdfs(
             embedding_model=embedding_model,
         )
 
+    preloaded_filenames = {pdf_path.name for pdf_path in pdf_paths}
+    existing = collection.get(include=["metadatas"])
+    existing_metadatas = existing.get("metadatas") or []
+    stale_ids = [
+        document_id
+        for index, document_id in enumerate(existing["ids"])
+        if index >= len(existing_metadatas)
+        or not existing_metadatas[index]
+        or existing_metadatas[index].get("filename") not in preloaded_filenames
+    ]
+    if stale_ids:
+        collection.delete(ids=stale_ids)
+
     document_count = collection.count()
     if document_count == 0:
         raise RuntimeError("The preloaded PDFs did not produce any searchable text.")
     return document_count
+
+
+def _overlap_length(previous: str, current: str) -> int:
+    max_overlap = min(CHUNK_OVERLAP, len(previous), len(current))
+    for length in range(max_overlap, 31, -1):
+        if previous[-length:] == current[:length]:
+            return length
+    return 0
+
+
+def _deduplicate_adjacent_chunks(
+    documents: Sequence[str],
+    metadatas: Sequence[Mapping[str, Any]],
+) -> list[tuple[str, Mapping[str, Any]]]:
+    retrieved: list[tuple[str, str, Mapping[str, Any]]] = []
+    for document, metadata in zip(documents, metadatas):
+        chunk_number = metadata.get("chunk_number")
+        filename = metadata.get("filename")
+        page = metadata.get("page")
+        trim_start = 0
+        trim_end = 0
+
+        if isinstance(chunk_number, int):
+            for previous_document, _, previous_metadata in retrieved:
+                if (
+                    previous_metadata.get("filename") != filename
+                    or previous_metadata.get("page") != page
+                ):
+                    continue
+                previous_chunk_number = previous_metadata.get("chunk_number")
+                if not isinstance(previous_chunk_number, int):
+                    continue
+
+                if chunk_number == previous_chunk_number + 1:
+                    trim_start = max(
+                        trim_start,
+                        _overlap_length(previous_document, document),
+                    )
+                elif chunk_number == previous_chunk_number - 1:
+                    trim_end = max(
+                        trim_end,
+                        _overlap_length(document, previous_document),
+                    )
+
+        end = len(document) - trim_end if trim_end else len(document)
+        unique_text = document[trim_start:end].strip()
+        if unique_text:
+            retrieved.append((document, unique_text, metadata))
+
+    return [(document, metadata) for _, document, metadata in retrieved]
 
 
 def answer_question(
@@ -227,12 +338,23 @@ def answer_question(
         include=["documents", "metadatas", "distances"],
     )
 
-    documents = matches["documents"][0]
-    metadatas = matches["metadatas"][0]
+    matched_documents = matches["documents"]
+    matched_metadatas = matches["metadatas"]
+    if (
+        matched_documents is None
+        or matched_metadatas is None
+        or not matched_documents
+        or not matched_metadatas
+    ):
+        raise RuntimeError("The vector search returned no documents or source metadata.")
+
+    documents = matched_documents[0]
+    metadatas = matched_metadatas[0]
+    retrieved_chunks = _deduplicate_adjacent_chunks(documents, metadatas)
     sources: list[dict[str, Any]] = []
     context_sections: list[str] = []
 
-    for index, (document, metadata) in enumerate(zip(documents, metadatas), start=1):
+    for index, (document, metadata) in enumerate(retrieved_chunks, start=1):
         source = {
             "number": index,
             "filename": metadata["filename"],

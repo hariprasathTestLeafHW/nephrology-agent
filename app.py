@@ -12,12 +12,13 @@ from streamlit.errors import StreamlitSecretNotFoundError
 
 from nephrology_agent.rag import (
     answer_question,
-    create_shared_ephemeral_collection,
+    create_shared_persistent_collection,
     index_preloaded_pdfs,
 )
 
 APP_DIRECTORY = Path(__file__).resolve().parent
 PRELOADED_PDF_DIRECTORY = APP_DIRECTORY / "data" / "knowledge_base"
+VECTOR_STORE_DIRECTORY = APP_DIRECTORY / "data" / "chroma"
 ASSISTANT_ILLUSTRATION = APP_DIRECTORY / "assets" / "nephrology_assistant.svg"
 PRELOADED_SOURCE_LABELS = {
     "nephrology_comprehensive_symptom_diagnosis_rag_kb.pdf": "Symptom and diagnosis reference",
@@ -92,7 +93,9 @@ def load_preloaded_collection(
     _api_key: str,
     configured_embedding_model: str,
 ) -> tuple[ClientAPI, Collection]:
-    chroma_client, shared_collection = create_shared_ephemeral_collection()
+    chroma_client, shared_collection = create_shared_persistent_collection(
+        VECTOR_STORE_DIRECTORY
+    )
     index_preloaded_pdfs(
         client=genai.Client(api_key=_api_key),
         collection=shared_collection,
@@ -118,7 +121,7 @@ with st.sidebar:
                     pdf_path.stem.replace("_", " ").title(),
                 )
             )
-    st.caption("The corpus is embedded when the app process starts; restarts use Gemini quota.")
+    st.caption("The server caches the vector index; rebuilding it uses Gemini quota.")
 
 collection: Collection | None = None
 document_count = 0
