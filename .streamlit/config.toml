@@ -1,5 +1,27 @@
 [browser]
 gatherUsageStats = false
 
+[theme]
+base = "light"
+primaryColor = "#0F766E"
+backgroundColor = "#EAF3F5"
+secondaryBackgroundColor = "#F5FAFB"
+textColor = "#18343C"
+borderColor = "#D2E2E5"
+font = "sans serif"
+baseRadius = "large"
+buttonRadius = "large"
+showWidgetBorder = true
+paddingTop = "1.5rem"
+paddingBottom = "2rem"
+
+[theme.sidebar]
+backgroundColor = "#E5EFF1"
+secondaryBackgroundColor = "#F0F6F7"
+textColor = "#18343C"
+primaryColor = "#0F766E"
+borderColor = "#D2E2E5"
+linkColor = "#0F766E"
+
 [server]
 address = "0.0.0.0"

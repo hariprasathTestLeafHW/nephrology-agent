@@ -1,0 +1,37 @@
+.st-key-hero-card {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(119, 213, 202, 0.30), transparent 34%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(226, 246, 245, 0.62));
+    border: 1px solid rgba(255, 255, 255, 0.90);
+    border-radius: 1.8rem;
+    box-shadow:
+        0 24px 60px rgba(27, 75, 84, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    overflow: hidden;
+    padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.st-key-hero-card h1 {
+    font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+    letter-spacing: -0.035em;
+    line-height: 1.12;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.st-key-hero-card h3 {
+    font-size: clamp(1.3rem, 2vw, 1.7rem);
+    line-height: 1.2;
+}
+
+.st-key-safety-card {
+    background: rgba(255, 255, 255, 0.70);
+    border: 1px solid rgba(15, 118, 110, 0.16);
+    border-radius: 1.2rem;
+    box-shadow: 0 12px 32px rgba(27, 75, 84, 0.07);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 1rem 1.25rem;
+}

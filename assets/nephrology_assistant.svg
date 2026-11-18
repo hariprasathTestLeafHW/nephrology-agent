@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 460" fill="none">
+  <defs>
+    <linearGradient id="halo" x1="70" y1="50" x2="470" y2="410" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D2F2EE"/>
+      <stop offset="1" stop-color="#E9F6FA"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="206" y1="218" x2="350" y2="422" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCEBED"/>
+    </linearGradient>
+    <linearGradient id="scrubs" x1="249" y1="213" x2="318" y2="389" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#45B8AC"/>
+      <stop offset="1" stop-color="#167B7B"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="247" y1="91" x2="322" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4C7A8"/>
+      <stop offset="1" stop-color="#E6A987"/>
+    </linearGradient>
+    <filter id="shadow" x="30" y="24" width="510" height="420" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <ellipse cx="288" cy="414" rx="178" ry="22" fill="#6BA8A5" opacity=".14" filter="url(#shadow)"/>
+  <circle cx="284" cy="235" r="196" fill="url(#halo)"/>
+  <circle cx="448" cy="105" r="31" fill="#FFFFFF" fill-opacity=".72"/>
+  <circle cx="115" cy="178" r="15" fill="#FFFFFF" fill-opacity=".82"/>
+
+  <g>
+    <rect x="356" y="55" width="148" height="126" rx="20" fill="#FFFFFF" fill-opacity=".84" stroke="#FFFFFF" stroke-width="3"/>
+    <path d="M383 88h50M383 101h31" stroke="#8CB7BA" stroke-linecap="round" stroke-width="5"/>
+    <path d="M408 136c-10-13-24-9-26 4-2 12 4 25 13 27 8 2 17-6 15-14-1-6-6-7-6-11-1-3 3-5 4-6Z" fill="#EF9D9F"/>
+    <path d="M452 136c10-13 24-9 26 4 2 12-4 25-13 27-8 2-17-6-15-14 1-6 6-7 6-11 1-3-3-5-4-6Z" fill="#F4B2B0"/>
+    <path d="M432 144h8" stroke="#4E9D9A" stroke-linecap="round" stroke-width="4"/>
+  </g>
+
+  <path d="M190 390c4-80 25-144 74-162h45c51 18 70 82 75 162l-31 34H217l-27-34Z" fill="url(#coat)"/>
+  <path d="M252 224h66l22 176h-111l23-176Z" fill="url(#scrubs)"/>
+  <path d="m252 226 33 37 33-37-12-18h-43l-11 18Z" fill="#E9B596"/>
+  <path d="m222 246-28 16-22 104c-2 11 6 21 17 22 10 1 19-6 20-16l19-83 18-21-24-22Z" fill="#F5F8F8" stroke="#D4E2E4" stroke-width="3"/>
+  <path d="m338 246 28 16 22 104c2 11-6 21-17 22-10 1-19-6-20-16l-19-83-18-21 24-22Z" fill="#F5F8F8" stroke="#D4E2E4" stroke-width="3"/>
+  <path d="M225 278h27M316 278h27" stroke="#C9DCDD" stroke-linecap="round" stroke-width="4"/>
+
+  <path d="M240 118c0-38 20-64 50-64s51 26 51 64v27c0 31-23 56-51 56s-50-25-50-56v-27Z" fill="url(#skin)"/>
+  <path d="M239 124c-7-45 16-78 53-78 32 0 55 21 54 62-13-3-23-12-28-25-12 15-37 25-76 25l-3 16Z" fill="#244B50"/>
+  <path d="M264 139c4 3 8 3 12 0M306 139c4 3 8 3 12 0" stroke="#6D5148" stroke-linecap="round" stroke-width="3"/>
+  <path d="M277 163c8 7 19 7 27 0" stroke="#A45E56" stroke-linecap="round" stroke-width="3"/>
+  <path d="M286 146v9" stroke="#D48E70" stroke-linecap="round" stroke-width="3"/>
+
+  <path d="M272 200h35v19c0 10-8 18-18 18s-17-8-17-18v-19Z" fill="url(#skin)"/>
+  <path d="M252 224 285 261l-28 27-30-40 25-24ZM319 224l-34 37 28 27 30-40-24-24Z" fill="#FFFFFF"/>
+  <path d="M264 225c-9 18-3 50 21 73 25-22 31-55 21-73" stroke="#2B7779" stroke-linecap="round" stroke-width="5"/>
+  <circle cx="285" cy="300" r="8" fill="#2B7779"/>
+  <path d="M284 309v24" stroke="#2B7779" stroke-linecap="round" stroke-width="5"/>
+
+  <g>
+    <rect x="93" y="282" width="77" height="103" rx="14" fill="#FFFFFF" fill-opacity=".92" stroke="#D6E8E9" stroke-width="3"/>
+    <path d="M111 309h39M111 325h30" stroke="#9BBFC0" stroke-linecap="round" stroke-width="5"/>
+    <circle cx="119" cy="352" r="10" fill="#D9F1EC"/>
+    <path d="m115 352 3 3 6-7" stroke="#17847D" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+    <path d="M137 352h16" stroke="#9BBFC0" stroke-linecap="round" stroke-width="4"/>
+  </g>
+
+  <path d="M206 421h158" stroke="#70A9A7" stroke-linecap="round" stroke-width="6" opacity=".32"/>
+</svg>

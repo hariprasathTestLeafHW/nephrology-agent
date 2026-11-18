@@ -18,6 +18,7 @@ from nephrology_agent.rag import (
 
 APP_DIRECTORY = Path(__file__).resolve().parent
 PRELOADED_PDF_DIRECTORY = APP_DIRECTORY / "data" / "knowledge_base"
+ASSISTANT_ILLUSTRATION = APP_DIRECTORY / "assets" / "nephrology_assistant.svg"
 
 load_dotenv(APP_DIRECTORY / ".env")
 
@@ -27,14 +28,43 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Nephrology Knowledge Assistant")
-st.caption("An educational assistant that answers from a shared, preloaded nephrology library.")
-st.warning(
-    "Educational use only — not a substitute for professional medical care. "
-    "Do not enter patient-identifiable or other sensitive health information. "
-    "This app sends questions, retrieved excerpts, and PDF text for embedding to Google's Gemini API. "
-    "Google's free-tier terms may allow submitted content to be used to improve its products."
-)
+st.html(APP_DIRECTORY / "assets" / "glass.css")
+
+with st.container(key="hero-card"):
+    intro_column, illustration_column = st.columns(
+        [1.3, 0.7],
+        vertical_alignment="center",
+    )
+    with intro_column:
+        st.badge(
+            "Nephrology education",
+            icon=":material/medical_services:",
+            color="green",
+        )
+        st.title("Nephrology Knowledge Assistant")
+        st.markdown(
+            "### Kidney health, explained with care."
+            "\n\nAsk general questions and explore clear answers grounded in "
+            "curated nephrology references."
+        )
+    with illustration_column:
+        st.image(
+            ASSISTANT_ILLUSTRATION,
+            width="stretch",
+            alt="Illustration of a nephrology assistant beside a kidney health diagram.",
+        )
+
+with st.container(key="safety-card"):
+    st.markdown(
+        "**Educational use only — not a substitute for professional medical care.** "
+        "Do not enter patient-identifiable or other sensitive health information."
+    )
+    st.caption(
+        "Questions, retrieved excerpts, and PDF text for embedding are sent to Google's "
+        "Gemini API. Google's free-tier terms may allow submitted content to be used "
+        "to improve its products."
+    )
+
 st.markdown(
     "[Google AI Studio API keys](https://aistudio.google.com/apikey) · "
     "[KDIGO guidelines](https://kdigo.org/guidelines/) · "
@@ -74,8 +104,6 @@ with st.sidebar:
         st.caption("RAG content")
         for pdf_path in sorted(PRELOADED_PDF_DIRECTORY.glob("*.pdf")):
             st.write(f"- {pdf_path.name}")
-    else:
-        st.info("The app owner must configure GEMINI_API_KEY in Streamlit secrets.")
     st.caption("The corpus is embedded when the app process starts; restarts use Gemini quota.")
 
 collection: Collection | None = None
@@ -101,7 +129,12 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    avatar = (
+        ":material/medical_services:"
+        if message["role"] == "assistant"
+        else None
+    )
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
         if message.get("sources"):
             with st.expander("Retrieved sources"):
@@ -120,15 +153,12 @@ question = st.chat_input(
     disabled=not configured_api_key or document_count == 0,
 )
 
-if not configured_api_key:
-    st.info("The app owner must configure GEMINI_API_KEY in Streamlit secrets to enable chat.")
-
 if question and collection is not None:
     st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.markdown(question)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=":material/medical_services:"):
         with st.spinner("Searching indexed sources and preparing an answer..."):
             try:
                 answer, sources = answer_question(
