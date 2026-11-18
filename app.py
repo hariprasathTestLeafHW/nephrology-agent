@@ -71,15 +71,7 @@ except (KeyError, StreamlitSecretNotFoundError):
 with st.sidebar:
     st.header("Knowledge base")
     if configured_api_key:
-        st.warning(
-            "The app's Gemini key is active. Requests from any visitor use the "
-            "app owner's Gemini quota."
-        )
-        st.write(
-            "All visitors share the same read-only collection of nephrology PDFs. "
-            "Visitors cannot upload or change its contents."
-        )
-        st.caption("Included PDFs:")
+        st.caption("RAG content")
         for pdf_path in sorted(PRELOADED_PDF_DIRECTORY.glob("*.pdf")):
             st.write(f"- {pdf_path.name}")
     else:
