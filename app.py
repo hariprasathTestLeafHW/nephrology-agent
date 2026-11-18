@@ -19,6 +19,15 @@ from nephrology_agent.rag import (
 APP_DIRECTORY = Path(__file__).resolve().parent
 PRELOADED_PDF_DIRECTORY = APP_DIRECTORY / "data" / "knowledge_base"
 ASSISTANT_ILLUSTRATION = APP_DIRECTORY / "assets" / "nephrology_assistant.svg"
+PRELOADED_SOURCE_LABELS = {
+    "nephrology_comprehensive_symptom_diagnosis_rag_kb.pdf": "Symptom and diagnosis reference",
+    "nephrology_diagnosis_agent_rag_starter.pdf": "Nephrology assistant starter guide",
+}
+SUGGESTED_QUESTIONS = (
+    "What kidney symptoms need urgent attention?",
+    "How are abnormal kidney tests generally evaluated?",
+    "What can cause blood or protein in urine?",
+)
 
 load_dotenv(APP_DIRECTORY / ".env")
 
@@ -47,6 +56,7 @@ with st.container(key="hero-card"):
             "\n\nAsk general questions and explore clear answers grounded in "
             "curated nephrology references."
         )
+        st.caption("Powered by Google Gemini LLM")
     with illustration_column:
         st.image(
             ASSISTANT_ILLUSTRATION,
@@ -66,7 +76,6 @@ with st.container(key="safety-card"):
     )
 
 st.markdown(
-    "[Google AI Studio API keys](https://aistudio.google.com/apikey) · "
     "[KDIGO guidelines](https://kdigo.org/guidelines/) · "
     "[NIDDK kidney health information](https://www.niddk.nih.gov/health-information/kidney-disease)"
 )
@@ -103,7 +112,12 @@ with st.sidebar:
     if configured_api_key:
         st.caption("RAG content")
         for pdf_path in sorted(PRELOADED_PDF_DIRECTORY.glob("*.pdf")):
-            st.write(f"- {pdf_path.name}")
+            st.write(
+                PRELOADED_SOURCE_LABELS.get(
+                    pdf_path.name,
+                    pdf_path.stem.replace("_", " ").title(),
+                )
+            )
     st.caption("The corpus is embedded when the app process starts; restarts use Gemini quota.")
 
 collection: Collection | None = None
@@ -148,10 +162,23 @@ for message in st.session_state.messages:
                             source["source_url"],
                         )
 
+suggested_question = None
+if configured_api_key and document_count and not st.session_state.messages:
+    st.markdown("#### Start with a question")
+    st.caption("Choose an example or type your own below.")
+    suggested_question = st.pills(
+        "Suggested questions",
+        SUGGESTED_QUESTIONS,
+        selection_mode="single",
+        label_visibility="collapsed",
+        key="suggested_question",
+    )
+
 question = st.chat_input(
     "Ask a general nephrology question",
     disabled=not configured_api_key or document_count == 0,
 )
+question = question or suggested_question
 
 if question and collection is not None:
     st.session_state.messages.append({"role": "user", "content": question})
