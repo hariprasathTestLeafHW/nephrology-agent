@@ -21,7 +21,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Enter your key from [Google AI Studio](https://aistudio.google.com/apikey) in the app's masked sidebar field. It is used for that app session and is not written to disk. Keep `.env` private; it is excluded by `.gitignore`. Never paste API keys into chat, screenshots, or source code. If a key is exposed, revoke it and create a replacement.
+For local use, put a key from [Google AI Studio](https://aistudio.google.com/apikey) in `.env`, or enter it in the app's masked sidebar field. The key is used by the app server and is not written to disk by the app. Keep `.env` private; it is excluded by `.gitignore`. Never paste API keys into chat, screenshots, or source code. If a key is exposed, revoke it and create a replacement.
 
 Run the app:
 
@@ -37,11 +37,11 @@ Text extraction does not include scanned-image OCR. OCR scanned PDFs before uplo
 
 This is an educational prototype, not a medical device or clinical decision-support system. It does not diagnose, interpret individual patient results, or recommend treatment changes. A clinician should be consulted for personal medical decisions; urgent symptoms need timely professional care.
 
-The vector store and chat history are temporary and private to each browser session, but embedding requests send PDF text to Google's API, and question-answer requests send the question and retrieved excerpts. Your Gemini API key is sent to the app server to make those requests and is not saved by this app. Google's free-tier terms state that submitted content may be used to improve its products. Do not upload protected health information or enter identifiable patient data. Review Google's current [API terms](https://ai.google.dev/gemini-api/terms) and [pricing/data-use details](https://ai.google.dev/gemini-api/docs/pricing) before use.
+The vector store and chat history are temporary and private to each browser session, but embedding requests send PDF text to Google's API, and question-answer requests send the question and retrieved excerpts. API keys are used by the app server and are not written to disk by this app. If you configure a server key for a public deployment, any visitor can use your Gemini quota and may incur costs. Google's free-tier terms state that submitted content may be used to improve its products. Do not upload protected health information or enter identifiable patient data. Review Google's current [API terms](https://ai.google.dev/gemini-api/terms) and [pricing/data-use details](https://ai.google.dev/gemini-api/docs/pricing) before use.
 
 ## Public hosting
 
-The app can be deployed from this repository to [Streamlit Community Cloud](https://share.streamlit.io/). Select branch `main` and `app.py` as the entry point; no hosted API key is needed because each visitor supplies their own. The app is public and does not require sign-in, so anyone with the link can use it. Free-tier availability and limits may change. Session data is not persisted to disk; its in-memory collection may remain until the app process restarts.
+The app can be deployed from this repository to [Streamlit Community Cloud](https://share.streamlit.io/). Select branch `main` and `app.py` as the entry point. To use one server-side key instead of asking visitors for their own, add `GEMINI_API_KEY = "your-key"` to the app's Community Cloud **Secrets** settings. Do not put it in this public repository; a GitHub Actions secret is not available to the running app. With a server key configured, anyone with the public link can use your Gemini quota and may incur costs. The app is public and does not require sign-in. Free-tier availability and limits may change. Session data is not persisted to disk; its in-memory collection may remain until the app process restarts.
 
 Answers are grounded in the indexed excerpts and include source references, but retrieval can miss relevant evidence and generated answers can be wrong or incomplete. Verify important claims in the cited source and consult a qualified professional.
 

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import APIError
 from pypdf.errors import PdfReadError
+from streamlit.errors import StreamlitSecretNotFoundError
 
 from nephrology_agent.rag import (
     MAX_PDF_BYTES,
@@ -44,13 +45,25 @@ embedding_model = os.environ.get(
     "gemini-embedding-001",
 ).strip()
 
+try:
+    configured_api_key = st.secrets["GEMINI_API_KEY"].strip()
+except (KeyError, StreamlitSecretNotFoundError):
+    configured_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
 with st.sidebar:
     st.header("Knowledge base")
-    api_key = st.text_input(
-        "Gemini API key",
-        type="password",
-        help="Used for this session's Gemini requests and not saved by the app.",
-    ).strip()
+    if configured_api_key:
+        api_key = configured_api_key
+        st.warning(
+            "The app's Gemini key is active. Requests from any visitor use the "
+            "app owner's Gemini quota."
+        )
+    else:
+        api_key = st.text_input(
+            "Gemini API key",
+            type="password",
+            help="Used for this session's Gemini requests and not saved by the app.",
+        ).strip()
     st.write(
         "Add PDFs you are authorized to use. Indexed text and vectors are private to "
         "this browser session."
@@ -71,7 +84,7 @@ with st.sidebar:
         use_container_width=True,
     )
 
-    if not api_key:
+    if not configured_api_key and not api_key:
         st.info("Enter your Gemini API key to enable indexing and chat.")
 
 if "chroma_client" not in st.session_state:
